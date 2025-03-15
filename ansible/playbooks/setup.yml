@@ -1,0 +1,35 @@
+---
+- name: Setup Raspberry Pi Homeserver
+  hosts: raspberry
+  become: true
+  tasks:
+    - name: Create homeserver directory
+      file:
+        path: /opt/homeserver
+        state: directory
+        mode: '0755'
+
+    - name: Create service directories
+      file:
+        path: "/opt/homeserver/{{ item }}"
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: '0755'
+      with_items:
+        - jellyfin
+        - media
+        - prometheus
+        - grafana
+        - homebridge
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: ../../docker/docker-compose.yml
+        dest: /opt/homeserver/docker-compose.yml
+        mode: '0644'
+
+    - name: Start services
+      shell: cd /opt/homeserver && docker-compose up -d
+      args:
+        executable: /bin/bash
