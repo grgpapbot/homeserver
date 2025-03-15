@@ -1,56 +1,47 @@
-version: '3'
+version: '3.8'
 
 services:
   jellyfin:
     image: jellyfin/jellyfin
     container_name: jellyfin
-    user: 1000:1000
-    network_mode: host
+    ports:
+      - "8096:8096"      # HTTP web UI and API
+      - "8920:8920"      # Optional HTTPS
+      - "7359:7359/udp"  # Service discovery
+      - "1900:1900/udp"  # DLNA
     volumes:
-      - /opt/homeserver/jellyfin:/config
+      - /opt/homeserver/jellyfin/config:/config
+      - /opt/homeserver/jellyfin/cache:/cache
       - /opt/homeserver/media:/media
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   prometheus:
     image: prom/prometheus:v2.45.0
     container_name: prometheus
-    user: 1000:1000
+    user: nobody:nogroup
+    volumes:
+      - /opt/homeserver/prometheus/config:/etc/prometheus
+      - /opt/homeserver/prometheus/data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
     ports:
       - "9090:9090"
-    volumes:
-      - /opt/homeserver/prometheus:/prometheus
-    command:
-      - '--config.file=/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
     restart: unless-stopped
 
   grafana:
     image: grafana/grafana:10.0.0
     container_name: grafana
-    user: 1000:1000
+    user: "472:472"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - grafana-logs:/var/log/grafana
+      - grafana-plugins:/var/lib/grafana/plugins
     ports:
       - "3000:3000"
-    volumes:
-      - /opt/homeserver/grafana:/var/lib/grafana
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
     restart: unless-stopped
 
-  homebridge:
-    image: oznu/homebridge:latest
-    container_name: homebridge
-    restart: unless-stopped
-    network_mode: host
-    environment:
-      - PGID=1000
-      - PUID=1000
-      - HOMEBRIDGE_CONFIG_UI=1
-      - HOMEBRIDGE_CONFIG_UI_PORT=8581
-    volumes:
-      - /opt/homeserver/homebridge:/homebridge
+volumes:
+  grafana-data:
+  grafana-logs:
+  grafana-plugins:
